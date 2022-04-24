@@ -1,6 +1,6 @@
 module uart_tx #(
     BAUD_RATE = 115200,
-    CLK_RATE = 1000000, 
+    CLK_RATE = 100000000, // 100MHz clock 
     WORD_WIDTH = 8,
     EVEN_PARITY = 0
 ) (
@@ -10,7 +10,7 @@ module uart_tx #(
     input   [WORD_WIDTH - 1: 0]    tx_data_in,
     output                         tx_ready,
     output                         tx_data_out,
-    output  [WORD_WIDTH - 1: 0]    dbg_shiftreg,
+    output  [WORD_WIDTH - 1: 0]    tx_dbg_shiftreg,
     output  s_idle, s_start, s_data, s_parity, s_stop, s_wait
 );
 
@@ -52,7 +52,7 @@ module uart_tx #(
     // debug output
     logic [WORD_WIDTH - 1: 0] shiftreg;
     assign shiftreg = tx_data_shiftreg;
-    assign dbg_shiftreg = shiftreg;
+    assign tx_dbg_shiftreg = shiftreg;
 
     logic   tx_baud_done_i;
     logic   tx_data_done_i;
@@ -77,7 +77,7 @@ module uart_tx #(
             tx_baud_counter_i <= 'd0;
         end
         else begin 
-            if ( tx_baud_done_i || current_state !== next_state) begin 
+            if ( tx_baud_done_i || current_state != next_state) begin 
                 tx_baud_counter_i <= 'd0;
             end
             else begin
