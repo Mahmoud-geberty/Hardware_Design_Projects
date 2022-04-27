@@ -1,13 +1,5 @@
 // mostly the same design as the transitter. 
 
-// current bug: 
-//   shiftreg registers the data at the wrong times. 
-
-// last debug attempt: 
-//  try making the register read the bit only during baud_done events. 
-//  and the initial baud-mid event. 
-
-// TODO: take a closer look and refactor the whole thing. 
 module uart_rx #(
     BAUD_RATE = 115200,
     CLK_RATE = 100000000, // 100MHz clock 
@@ -19,6 +11,8 @@ module uart_rx #(
     input                          rx_data_in,
     output                         rx_ready,
     output  [WORD_WIDTH - 1: 0]    rx_data_out,
+    output                         rx_data_valid,
+    output                         rx_bit_error,
     output  [WORD_WIDTH : 0]       rx_dbg_shiftreg,
     output  s_idle, s_start, s_data, s_parity, s_stop, s_wait
 );
@@ -55,6 +49,7 @@ module uart_rx #(
     logic   [DATA_COUNTER_SIZE - 1: 0]  rx_data_counter_i;
     logic   [BAUD_COUNTER_SIZE: 0]      rx_baud_counter_i;
 
+    logic                               rx_parity;
     logic                               parity_bit_i; 
     logic                               w_data;
 
@@ -64,7 +59,7 @@ module uart_rx #(
     assign rx_dbg_shiftreg = shiftreg;
 
     logic   rx_baud_done_i;
-    logic   rx_baud_mid_i; // used to shift the baud counter to sample middle of input bit
+    logic   rx_baud_mid_i; 
     logic   rx_data_done_i;
     logic   no_baud_rst;
 
@@ -94,28 +89,35 @@ module uart_rx #(
         end
     end
 
-    assign rx_baud_done_i = rx_baud_counter_i == BAUD_COUNTER_MAX - 1;
+    assign rx_baud_done_i = rx_baud_counter_i >= BAUD_COUNTER_MAX - 1;
     assign rx_baud_mid_i = rx_baud_counter_i == ( BAUD_COUNTER_MAX + (BAUD_COUNTER_MAX / 2) ) - 1; 
 
     // wait an extra half baud cycle during start bit
+    // to make sure the bit is read in the middle.
     assign no_baud_rst = (current_state == START && next_state == START); 
+
+    // the rx shift register
+    always @(posedge clock) begin 
+        if ( rst ) begin 
+            rx_data_shiftreg <= 0; 
+        end
+        else if (rx_baud_done_i || state_transition) begin 
+            rx_data_shiftreg <= rx_data_shiftreg >> 1; 
+            rx_data_shiftreg[WORD_WIDTH] <= w_data;
+        end
+    end
 
     // the data bit counter.
     always @(posedge clock) begin
         if ( rst ) begin 
             rx_data_counter_i <= 'd0;
-            rx_data_shiftreg <= 'd0; 
         end
         else if (rx_baud_done_i) begin 
             if (state_transition) begin 
                 rx_data_counter_i <= 'd0;
-                rx_data_shiftreg <= rx_data_shiftreg >> 1; 
-                rx_data_shiftreg[WORD_WIDTH] <= w_data;
             end
             else begin 
                 rx_data_counter_i <= rx_data_counter_i + 1;
-                rx_data_shiftreg <= rx_data_shiftreg >> 1;
-                rx_data_shiftreg[WORD_WIDTH] <= w_data;
             end 
         end 
     end
@@ -183,22 +185,13 @@ module uart_rx #(
         endcase
     end 
 
-    // state transitions. (mealy outputs would be determined here)
+    // state transitions. 
     always @(posedge clock) begin 
         if ( rst) begin 
             current_state <= IDLE;
             rx_data_out_i <= 8'd0;
         end
-        else if (next_state == DATA) begin 
-            rx_data_shiftreg[WORD_WIDTH] <= w_data;
-            current_state <= next_state;
-        end
-        else if (current_state == DATA) begin 
-            rx_data_shiftreg[WORD_WIDTH] <= w_data; 
-            current_state <= next_state;
-        end
-        // transition from parity to stop. 
-        else if (next_state == STOP) begin 
+        else if (current_state == PARITY) begin 
             rx_data_buffer_i <= rx_data_shiftreg;
             current_state <= next_state;
         end
@@ -216,37 +209,11 @@ module uart_rx #(
     end
 
     assign rx_data_out = rx_data_out_i;
+    assign w_data = rx_data_in;
 
-    // moore outputs
-    // always @(*) begin 
-    //     case (current_state)
-    //         IDLE: begin 
-    //             w_data = 0;
-    //         end
+    assign rx_parity = (EVEN_PARITY)? ^rx_data_out_i: ~^rx_data_out_i;
+    assign rx_bit_error = (rx_parity != parity_bit_i);
 
-    //         START: begin 
-    //             w_data = 0;
-    //         end
-
-    //         DATA: begin 
-    //             w_data = rx_data_in;
-    //         end
-
-    //         PARITY: begin 
-    //             w_data = rx_data_in;
-    //         end
-
-    //         STOP: begin 
-    //             w_data = 0;
-    //         end
-
-    //         WAIT: begin 
-    //             w_data = 0;
-    //         end 
-    //         default: w_data = 0;
-    //     endcase 
-    // end
-
-    assign w_data = (rx_baud_done_i && no_baud_rst)? rx_data_in: 0;
+    assign rx_data_valid = (current_state == WAIT);
 
 endmodule

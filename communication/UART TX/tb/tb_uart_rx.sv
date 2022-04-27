@@ -7,6 +7,8 @@ module tb_uart_rx ();
     logic                          rst;
     logic                          rx_ready;
     logic   [WORD_WIDTH - 1: 0]    rx_data_out;
+    logic                          rx_data_valid;
+    logic                          rx_bit_error;
     logic  s_idle, s_start, s_data, s_parity, s_stop, s_wait;
 
     
