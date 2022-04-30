@@ -8,10 +8,10 @@ module uart_tx #(
     input                          rst,
     input                          tx_data_valid,
     input   [WORD_WIDTH - 1: 0]    tx_data_in,
-    output                         tx_ready,
-    output                         tx_data_out,
-    output  [WORD_WIDTH - 1: 0]    tx_dbg_shiftreg,
-    output  s_idle, s_start, s_data, s_parity, s_stop, s_wait
+    // output                         tx_ready,
+    output                         tx_data_out
+    // output  [WORD_WIDTH - 1: 0]    tx_dbg_shiftreg
+    // output  s_idle, s_start, s_data, s_parity, s_stop, s_wait
 );
 
 
@@ -21,12 +21,16 @@ module uart_tx #(
     state  next_state = IDLE;
 
     // debug outputs
-    assign s_idle = current_state == IDLE;
-    assign s_start = current_state == START;
-    assign s_data = current_state == DATA;
-    assign s_parity = current_state == PARITY;
-    assign s_stop = current_state == STOP;
-    assign s_wait = current_state == WAIT;
+    // assign s_idle = current_state == IDLE;
+    // assign s_start = current_state == START;
+    // assign s_data = current_state == DATA;
+    // assign s_parity = current_state == PARITY;
+    // assign s_stop = current_state == STOP;
+    // assign s_wait = current_state == WAIT;
+
+    // logic [WORD_WIDTH - 1: 0] shiftreg;
+    // assign shiftreg = tx_data_shiftreg;
+    // assign tx_dbg_shiftreg = shiftreg;
 
     // constants for further down usage
     localparam TX_IDLE = 1'b1;
@@ -48,11 +52,6 @@ module uart_tx #(
     logic   [WORD_WIDTH - 1: 0]         tx_data_shiftreg;
     logic   [DATA_COUNTER_SIZE - 1: 0]  tx_data_counter_i;
     logic   [BAUD_COUNTER_SIZE - 1: 0]  tx_baud_counter_i;
-
-    // debug output
-    logic [WORD_WIDTH - 1: 0] shiftreg;
-    assign shiftreg = tx_data_shiftreg;
-    assign tx_dbg_shiftreg = shiftreg;
 
     logic   tx_baud_done_i;
     logic   tx_data_done_i;

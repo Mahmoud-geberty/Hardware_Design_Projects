@@ -9,12 +9,12 @@ module uart_rx #(
     input                          clock,
     input                          rst,
     input                          rx_data_in,
-    output                         rx_ready,
+    // output                         rx_ready,
     output  [WORD_WIDTH - 1: 0]    rx_data_out,
     output                         rx_data_valid,
-    output                         rx_bit_error,
-    output  [WORD_WIDTH : 0]       rx_dbg_shiftreg,
-    output  s_idle, s_start, s_data, s_parity, s_stop, s_wait
+    output                         rx_bit_error
+    // output  [WORD_WIDTH : 0]       rx_dbg_shiftreg,
+    // output  s_idle, s_start, s_data, s_parity, s_stop, s_wait
 );
 
 
@@ -24,13 +24,16 @@ module uart_rx #(
     state  next_state = IDLE;
 
     // debug outputs
-    assign s_idle = current_state == IDLE;
-    assign s_start = current_state == START;
-    assign s_data = current_state == DATA;
-    assign s_parity = current_state == PARITY;
-    assign s_stop = current_state == STOP;
-    assign s_wait = current_state == WAIT;
+    // assign s_idle = current_state == IDLE;
+    // assign s_start = current_state == START;
+    // assign s_data = current_state == DATA;
+    // assign s_parity = current_state == PARITY;
+    // assign s_stop = current_state == STOP;
+    // assign s_wait = current_state == WAIT;
 
+    // logic [WORD_WIDTH: 0] shiftreg;
+    // assign shiftreg = rx_data_shiftreg;
+    // assign rx_dbg_shiftreg = shiftreg;
 
     // calculate constants to be used further down. 
     localparam BAUD_COUNTER_MAX = CLK_RATE / BAUD_RATE; 
@@ -52,11 +55,6 @@ module uart_rx #(
     logic                               rx_parity;
     logic                               parity_bit_i; 
     logic                               w_data;
-
-    // debug output
-    logic [WORD_WIDTH: 0] shiftreg;
-    assign shiftreg = rx_data_shiftreg;
-    assign rx_dbg_shiftreg = shiftreg;
 
     logic   rx_baud_done_i;
     logic   rx_baud_mid_i; 
